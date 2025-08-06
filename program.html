@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connections Explorer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+    @keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background 0.8s ease;
+    }
+    .page {
+      width: 100vw; height: 100vh;
+      position: fixed; top: 0; left: 0;
+      opacity: 0; pointer-events: none;
+      transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      transform: translateY(20px);
+      padding: 2rem; box-sizing: border-box;
+    }
+    .page.active {
+      opacity: 1; pointer-events: all;
+      transform: translateY(0);
+    }
+    .hidden-content { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; }
+
+    /* Intersection Points styles */
+    .heartbeat { animation: heartbeat 1.5s ease-in-out infinite; }
+    @keyframes heartbeat {
+      0% { transform: scale(1); }
+      25% { transform: scale(1.1); }
+      50% { transform: scale(1); }
+      75% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .connection-node {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.3s ease; position: relative;
+    }
+    .connection-node:hover { transform: scale(1.1); }
+
+    /* Memory card (from original) */
+    .memory-card { transform-style: preserve-3d; transition: all 0.8s ease; }
+    .memory-card.flipped { transform: rotateY(180deg); }
+    .memory-front, .memory-back {
+      backface-visibility: hidden; position: absolute;
+      width: 100%; height: 100%;
+    }
+    .memory-back { transform: rotateY(180deg); }
+
+    .page-indicator.active { background-color: #ec4899; }
+
+    #page1 button {
+      background-color: #100809;
+      color: white;
+      font-weight: 700;
+      padding: 1rem 2rem;
+      border-radius: 9999px;
+      box-shadow: 0 10px 15px -3px rgba(236,72,153,0.5);
+      transition: background-color 0.3s ease, transform 0.3s ease;
+      cursor: pointer;
+      margin-top: 2rem;
+      font-size: 1.5rem;
+      user-select: none;
+    }
+    #page1 button:hover {
+      background-color: #db2777;
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 640px) {
+      /* Keep .page fixed but smaller padding */
+      .page {
+        padding: 1rem !important;
+        justify-content: center;
+        align-items: center;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      }
+      #page1 button {
+        font-size: 1.2rem;
+        padding: 0.75rem 1.5rem;
+      }
+      #page1 img {
+        width: 80vw !important;
+      }
+      /* Reduce h1 font size */
+      #page3 h1 {
+        font-size: 2rem !important;
+      }
+      #page4 h2 {
+        font-size: 2rem !important;
+      }
+      
+      /* Shrink the canvas container height */
+      #particlesCanvas {
+        height: 180px !important;
+        max-width: 100% !important;
+      }
+      
+      /* Make buttons smaller */
+      button {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.875rem !important;
+      }
+      
+      /* Nav buttons smaller but keep position */
+      nav {
+        padding: 1rem !important;
+      }
+      nav .nav-btn {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.875rem !important;
+      }
+    }
+
+.container {
+  width: 100px;
+  height: 300px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  transform: scale(0.6);
+}
+
+.container div {
+  position: absolute;
+}
+.container .glass {
+  height: 420px;
+  width: 250px;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  -moz-border-radius: 300px 300px 0px 0px;
+  -webkit-border-radius: 300px;
+  border-radius: 300px 300px 0px 0px;
+  left: -90px;
+  top: -100px;
+  border-bottom: 15px solid rgba(255, 255, 255, 0.5);
+}
+.container .glass:after {
+  width: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  content: '';
+  position: absolute;
+  height: 80px;
+  top: 430px;
+  border-radius: 100px;
+  left: 10px;
+  top: 180px;
+}
+.container .glass:before {
+  width: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  content: '';
+  position: absolute;
+  height: 15px;
+  top: 430px;
+  border-radius: 100px;
+  left: 10px;
+  top: 280px;
+}
+.container .glow {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  -moz-border-radius: 100%;
+  -webkit-border-radius: 100%;
+  border-radius: 100%;
+  border: 1px solid rgba(245, 148, 184, 0.47);
+  box-shadow: 0px 0px 10px #f594b8;
+  left: -40px;
+  top: -40px;
+  -moz-transition: all 0.5s ease;
+  -o-transition: all 0.5s ease;
+  -webkit-transition: all 0.5s ease;
+  transition: all 0.5s ease;
+  -moz-animation: glowing 2.5s ease-in-out infinite;
+  -webkit-animation: glowing 2.5s ease-in-out infinite;
+  animation: glowing 2.5s ease-in-out infinite;
+}
+.container .rose-petals > div {
+  background: #d52d58;
+  width: 45px;
+  height: 80px;
+  position: absolute;
+  -moz-transition: all 0.5s ease-out;
+  -o-transition: all 0.5s ease-out;
+  -webkit-transition: all 0.5s ease-out;
+  transition: all 0.5s ease-out;
+}
+.container .rose-petals > div:nth-child(1) {
+  border-radius: 15px;
+  left: 20px;
+  top: -6px;
+  background: #d52d58;
+}
+.container .rose-petals > div:nth-child(2), .container .rose-petals > div:nth-child(4), .container .rose-petals > div:nth-child(6) {
+  border-radius: 0px 30px 0px 30px;
+  background: #b81b43;
+  left: 0;
+  transform-origin: bottom right;
+}
+.container .rose-petals > div:nth-child(3), .container .rose-petals > div:nth-child(5), .container .rose-petals > div:nth-child(7) {
+  border-radius: 30px 0px 30px 0px;
+  left: 40px;
+  transform-origin: bottom left;
+}
+.container .rose-petals > div:nth-child(2) {
+  -moz-animation: openRose2 3s ease-in-out;
+  -webkit-animation: openRose2 3s ease-in-out;
+  animation: openRose2 3s ease-in-out;
+  -moz-animation-fill-mode: forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  z-index: 5;
+  background: #9e183a;
+  top: 10px;
+  height: 70px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .rose-petals > div:nth-child(3) {
+  -moz-animation: openRose3 3s ease-in-out;
+  -webkit-animation: openRose3 3s ease-in-out;
+  animation: openRose3 3s ease-in-out;
+  -moz-animation-fill-mode: forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  z-index: 4;
+  background: #9e183a;
+  top: 10px;
+  height: 70px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .rose-petals > div:nth-child(4) {
+  -moz-animation: openRose4 3s ease-in-out;
+  -webkit-animation: openRose4 3s ease-in-out;
+  animation: openRose4 3s ease-in-out;
+  -moz-animation-fill-mode: forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  z-index: 3;
+  background: #b81b43;
+  top: 5px;
+  height: 75px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .rose-petals > div:nth-child(5) {
+  -moz-animation: openRose5 3s ease-in-out;
+  -webkit-animation: openRose5 3s ease-in-out;
+  animation: openRose5 3s ease-in-out;
+  -moz-animation-fill-mode: forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  z-index: 2;
+  background: #b81b43;
+  top: 5px;
+  height: 75px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .rose-petals > div:nth-child(6) {
+  -moz-animation: openRose6 3s ease-in-out;
+  -webkit-animation: openRose6 3s ease-in-out;
+  animation: openRose6 3s ease-in-out;
+  -moz-animation-fill-mode: forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  z-index: 1;
+  background: #c9204b;
+  top: "";
+  height: "";
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .rose-petals > div:nth-child(7) {
+  -moz-animation: openRose7 3s ease-in-out;
+  -webkit-animation: openRose7 3s ease-in-out;
+  animation: openRose7 3s ease-in-out;
+  -moz-animation-fill-mode: forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  z-index: 0;
+  background: #c9204b;
+  top: "";
+  height: "";
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .rose-leaves > div:nth-last-child(1) {
+  width: 55px;
+  height: 30px;
+  background: #338f37;
+  position: absolute;
+  top: 60px;
+  left: 15px;
+  -moz-border-radius: 100px;
+  -webkit-border-radius: 100px;
+  border-radius: 100px;
+}
+.container .rose-leaves > div:nth-child(1) {
+  width: 6px;
+  height: 230px;
+  border: none;
+  top: 80px;
+  background: #066406;
+  left: 40px;
+}
+.container .thorns > div {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 10px solid #2a5e2a;
+  position: absolute;
+}
+
+.container .thorns > div:nth-child(1) {
+  top: 110px;
+  left: 25px;
+  transform: rotate(-25deg);
+}
+
+.container .thorns > div:nth-child(2) {
+  top: 150px;
+  left: 55px;
+  transform: rotate(25deg);
+}
+
+.container .thorns > div:nth-child(3) {
+  top: 190px;
+  left: 30px;
+  transform: rotate(-20deg);
+}
+
+.container .thorns > div:nth-child(4) {
+  top: 230px;
+  left: 60px;
+  transform: rotate(25deg);
+}
+
+.container .thorns > div:nth-child(2) {
+  top: 150px;
+  -moz-transform: rotate(180deg);
+  -ms-transform: rotate(180deg);
+  -webkit-transform: rotate(180deg);
+  transform: rotate(180deg);
+  left: 45px;
+}
+.container .thorns > div:nth-child(3) {
+  top: 180px;
+}
+.container .thorns > div:nth-child(4) {
+  top: 220px;
+  -moz-transform: rotate(180deg);
+  -ms-transform: rotate(180deg);
+  -webkit-transform: rotate(180deg);
+  transform: rotate(180deg);
+  left: 45px;
+}
+.container .sparkles {
+  bottom: -40px;
+}
+.container .sparkles > div {
+  width: 4px;
+  height: 4px;
+  border-radius: 100px;
+  background: #ff96c0;
+  box-shadow: 0px 0px 12px 2px #ff4e85;
+  bottom: 0;
+  opacity: 0;
+  -moz-animation: sparkle 4s ease-in-out infinite;
+  -webkit-animation: sparkle 4s ease-in-out infinite;
+  animation: sparkle 4s ease-in-out infinite;
+}
+.container .sparkles > div:nth-child(1) {
+  left: 60px;
+  -moz-animation-delay: 3s;
+  -webkit-animation-delay: 3s;
+  animation-delay: 3s;
+}
+.container .sparkles > div:nth-child(2) {
+  left: 158px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .sparkles > div:nth-child(3) {
+  left: -22px;
+  -moz-animation-delay: 1s;
+  -webkit-animation-delay: 1s;
+  animation-delay: 1s;
+}
+.container .sparkles > div:nth-child(4) {
+  left: 10px;
+  -moz-animation-delay: 1s;
+  -webkit-animation-delay: 1s;
+  animation-delay: 1s;
+}
+.container .sparkles > div:nth-child(5) {
+  left: 177px;
+  -moz-animation-delay: 3s;
+  -webkit-animation-delay: 3s;
+  animation-delay: 3s;
+}
+.container .sparkles > div:nth-child(6) {
+  left: -82px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+.container .sparkles > div:nth-child(7) {
+  left: 45px;
+  -moz-animation-delay: 3s;
+  -webkit-animation-delay: 3s;
+  animation-delay: 3s;
+}
+.container .sparkles > div:nth-child(8) {
+  left: 74px;
+  -moz-animation-delay: 3s;
+  -webkit-animation-delay: 3s;
+  animation-delay: 3s;
+}
+.container .sparkles > div:nth-child(9) {
+  left: -79px;
+  -moz-animation-delay: 2s;
+  -webkit-animation-delay: 2s;
+  animation-delay: 2s;
+}
+
+@-webkit-keyframes $animationName {
+  50% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 250px;
+  }
+}
+@-moz-keyframes sparkle {
+  50% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 250px;
+  }
+}
+@-ms-keyframes sparkle {
+  50% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 250px;
+  }
+}
+@keyframes sparkle {
+  50% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 250px;
+  }
+}
+@-webkit-keyframes $animationName {
+  50% {
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    -webkit-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+    top: 80px;
+    left: 100px;
+  }
+  100% {
+    -moz-transform: rotate(-60deg);
+    -ms-transform: rotate(-60deg);
+    -webkit-transform: rotate(-60deg);
+    transform: rotate(-60deg);
+    top: 210px;
+    left: -30px;
+  }
+}
+@-moz-keyframes openRose2 {
+  50% {
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    -webkit-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+    top: 80px;
+    left: 100px;
+  }
+  100% {
+    -moz-transform: rotate(-60deg);
+    -ms-transform: rotate(-60deg);
+    -webkit-transform: rotate(-60deg);
+    transform: rotate(-60deg);
+    top: 210px;
+    left: -30px;
+  }
+}
+@-ms-keyframes openRose2 {
+  50% {
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    -webkit-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+    top: 80px;
+    left: 100px;
+  }
+  100% {
+    -moz-transform: rotate(-60deg);
+    -ms-transform: rotate(-60deg);
+    -webkit-transform: rotate(-60deg);
+    transform: rotate(-60deg);
+    top: 210px;
+    left: -30px;
+  }
+}
+@keyframes openRose2 {
+  50% {
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    -webkit-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+    top: 80px;
+    left: 100px;
+  }
+  100% {
+    -moz-transform: rotate(-60deg);
+    -ms-transform: rotate(-60deg);
+    -webkit-transform: rotate(-60deg);
+    transform: rotate(-60deg);
+    top: 210px;
+    left: -30px;
+  }
+}
+@-webkit-keyframes $animationName {
+  100% {
+    -moz-transform: rotate(60deg);
+    -ms-transform: rotate(60deg);
+    -webkit-transform: rotate(60deg);
+    transform: rotate(60deg);
+  }
+}
+@-moz-keyframes openRose3 {
+  100% {
+    -moz-transform: rotate(60deg);
+    -ms-transform: rotate(60deg);
+    -webkit-transform: rotate(60deg);
+    transform: rotate(60deg);
+  }
+}
+@-ms-keyframes openRose3 {
+  100% {
+    -moz-transform: rotate(60deg);
+    -ms-transform: rotate(60deg);
+    -webkit-transform: rotate(60deg);
+    transform: rotate(60deg);
+  }
+}
+@keyframes openRose3 {
+  100% {
+    -moz-transform: rotate(60deg);
+    -ms-transform: rotate(60deg);
+    -webkit-transform: rotate(60deg);
+    transform: rotate(60deg);
+  }
+}
+@-webkit-keyframes $animationName {
+  100% {
+    -moz-transform: rotate(-30deg);
+    -ms-transform: rotate(-30deg);
+    -webkit-transform: rotate(-30deg);
+    transform: rotate(-30deg);
+  }
+}
+@-moz-keyframes openRose4 {
+  100% {
+    -moz-transform: rotate(-30deg);
+    -ms-transform: rotate(-30deg);
+    -webkit-transform: rotate(-30deg);
+    transform: rotate(-30deg);
+  }
+}
+@-ms-keyframes openRose4 {
+  100% {
+    -moz-transform: rotate(-30deg);
+    -ms-transform: rotate(-30deg);
+    -webkit-transform: rotate(-30deg);
+    transform: rotate(-30deg);
+  }
+}
+@keyframes openRose4 {
+  100% {
+    -moz-transform: rotate(-30deg);
+    -ms-transform: rotate(-30deg);
+    -webkit-transform: rotate(-30deg);
+    transform: rotate(-30deg);
+  }
+}
+@-webkit-keyframes $animationName {
+  100% {
+    -moz-transform: rotate(30deg);
+    -ms-transform: rotate(30deg);
+    -webkit-transform: rotate(30deg);
+    transform: rotate(30deg);
+  }
+}
+@-moz-keyframes openRose5 {
+  100% {
+    -moz-transform: rotate(30deg);
+    -ms-transform: rotate(30deg);
+    -webkit-transform: rotate(30deg);
+    transform: rotate(30deg);
+  }
+}
+@-ms-keyframes openRose5 {
+  100% {
+    -moz-transform: rotate(30deg);
+    -ms-transform: rotate(30deg);
+    -webkit-transform: rotate(30deg);
+    transform: rotate(30deg);
+  }
+}
+@keyframes openRose5 {
+  100% {
+    -moz-transform: rotate(30deg);
+    -ms-transform: rotate(30deg);
+    -webkit-transform: rotate(30deg);
+    transform: rotate(30deg);
+  }
+}
+@-webkit-keyframes $animationName {
+  50% {
+    box-shadow: 0px 0px 60px #f594b8;
+  }
+}
+@-moz-keyframes glowing {
+  50% {
+    box-shadow: 0px 0px 60px #f594b8;
+  }
+}
+@-ms-keyframes glowing {
+  50% {
+    box-shadow: 0px 0px 60px #f594b8;
+  }
+}
+@keyframes glowing {
+  50% {
+    box-shadow: 0px 0px 60px #f594b8;
+  }
+}
+
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center">
+
+  <!-- Nav -->
+  <!-- <nav class="fixed top-0 right-0 p-4 z-50 flex flex-col space-y-2">
+    <button class="nav-btn bg-white shadow-lg w-10 h-10 rounded-full" data-page="page1">1</button>
+    <button class="nav-btn bg-white shadow-lg w-10 h-10 rounded-full" data-page="page2">2</button>
+    <button class="nav-btn bg-white shadow-lg w-10 h-10 rounded-full" data-page="page3">3</button>
+    <button class="nav-btn bg-white shadow-lg w-10 h-10 rounded-full" data-page="page4">4</button>
+    <button class="nav-btn bg-white shadow-lg w-10 h-10 rounded-full" data-page="page5">5</button>
+
+  </nav> -->
+
+  <!-- Page 1: Blank -->
+  <div class="page active" id="page1">
+    <img 
+      src="https://media1.giphy.com/media/nePPNi32OU16iK00IB/giphy.gif?cid=790b7611805d77148479a610a1bf742471369fba0accadea&rid=giphy.gif&ct=g" 
+      alt="Are you ready?" 
+      style="max-width: 400px; width: 100%; border-radius: 1rem;"
+      loading="lazy"
+    />
+    <button id="readyBtn">Yes, I'm Ready!</button>
+  </div>
+
+  <!-- Page 2: Blank -->
+  <div class="page" id="page2">
+  <div class="flex flex-col items-center justify-center h-full text-center relative">
+    <img 
+      id="page2Gif"
+      src="https://media1.tenor.com/images/002a604204f7912b76068da9bfae861b/tenor.gif?itemid=5883394" 
+      style="max-width: 400px; width: 100%; border-radius: 1rem; transition: opacity 5s ease;"
+      loading="lazy"
+    />
+
+    <div id="questionContainer2" class="mt-8 hidden">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4" id="text_maychance">May chance po ba programmer nito?</h2>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <button id="yesBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full">Yes</button>
+        <button id="maybeBtn" class="bg-yellow-400 hover:bg-yellow-500 text-white px-4 py-2 rounded-full">Maybe</button>
+        <button id="noBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full">No</button>
+      </div>
+    </div>
+
+    <!-- Reaction GIFs -->
+    <img id="reactionGif" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 hidden max-w-xs" />
+  </div>
+</div>
+
+  <!-- Page 3: Intersection Points (previously page1) -->
+  <div class="page" id="page3">
+    <div class="flex flex-col items-center justify-center h-full">
+      <h1 class="text-4xl md:text-6xl font-bold text-center mb-6 text-indigo-800">Pinag tagpo. What if tinadhana rin? Charot HAHA</h1>
+      <div class="relative w-full max-w-md h-96 mb-8" id="particlesCanvas">
+        <canvas class="absolute top-0 left-0 w-full h-full"></canvas>
+      </div>
+      <div class="w-full max-w-md mb-6">
+        <div class="flex space-x-4 mb-4">
+          <button class="flex-1 bg-pink-500 text-white py-2 rounded-lg shadow hover:bg-pink-600 transition" id="addParticleBtn">Add Element</button>
+          <button class="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg shadow hover:bg-gray-300 transition" id="resetParticlesBtn">Reset</button>
+        </div>
+        <input type="range" min="1" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg cursor-pointer" id="gravitySlider">
+        <div class="flex justify-between text-xs text-gray-600 mt-1">
+          <span>Freedom</span><span>Gravity</span>
+        </div>
+      </div>
+      <p class="text-center mb-4 text-gray-700">"What unseen forces determine when paths will cross? (Slide to left if Freedom ba nagpa tagpo satin and Right otherwise.) 😂"</p>
+      <button class="bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-indigo-700 transition transform hover:scale-105" id="revealBtn1">
+        Click me before ka mag slide 😛
+      </button>
+      <div class="hidden-content mt-6 text-center" id="hidden1">
+        <p class="mb-4 text-gray-800">Observe the elements. Slide and You'll See. Compare it's movement from Freedom to Gravity.</p>
+        <button class="bg-white text-indigo-600 px-6 py-3 rounded-full shadow-lg hover:bg-gray-100 transition" onclick="showPage('page4')">
+          Sana na gets HAHA. Lezgo next →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 4: Quiz (previously page2) -->
+  <section id="page4" class="page">
+    <div class="flex flex-col justify-center items-center h-full px-6 py-16 bg-white w-full max-w-xl mx-auto">
+      <h2 class="text-4xl font-bold mb-8 text-center text-pink-600">Ano ba love language mo madam?😂 </h2>
+      <div class="bg-pink-50 p-8 rounded-xl shadow-lg mb-8 card-hover w-full">
+        <div id="quizProgress" class="h-2 bg-pink-200 rounded-full mb-6">
+          <div class="h-full bg-pink-500 rounded-full" style="width:0%"></div>
+        </div>
+        <div id="questionContainer">
+          <h3 id="questionText" class="text-xl font-semibold mb-4 text-purple-700"></h3>
+          <div class="space-y-3">
+            <button class="quiz-option w-full text-left p-4 bg-white rounded-lg hover:bg-pink-100 border border-pink-200"></button>
+            <button class="quiz-option w-full text-left p-4 bg-white rounded-lg hover:bg-pink-100 border border-pink-200"></button>
+            <button class="quiz-option w-full text-left p-4 bg-white rounded-lg hover:bg-pink-100 border border-pink-200"></button>
+            <button class="quiz-option w-full text-left p-4 bg-white rounded-lg hover:bg-pink-100 border border-pink-200"></button>
+          </div>
+        </div>
+        <div id="resultContainer" class="hidden text-center">
+          <h3 class="text-2xl font-bold mb-4 text-pink-600">Your Primary Love Language is:</h3>
+          <p id="resultText" class="text-xl mb-6"></p>
+          <div id="loveLanguageVisual" class="w-full h-48 mb-6"></div>
+          <p id="resultDescription" class="text-gray-700 mb-6"></p>
+          <button id="retakeQuiz" class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-full hidden" >Try again?</button>
+          <button id="no_retake" class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-full" onclick="showPage('page5')">#Noted HAHAHA. Proceed?</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<!-- Page 5: Sniper then Rose Animation -->
+<div class="page" id="page5">
+  <div class="flex flex-col items-center justify-center h-full text-center relative" id="sniperSection">
+    <h2 class="text-3xl font-bold text-pink-700 mb-6">Kape muna para di matamaan ng sniper 😂</h2>
+    <img 
+      src="https://cdn.dribbble.com/users/664063/screenshots/3317976/sniper_girl__dribbble_.gif" 
+      alt="Woman Drinking Coffee"
+      class="rounded-xl shadow-lg max-w-xs w-full animate-bounce-slow transition-opacity duration-1000"
+      style="animation: float 4s ease-in-out infinite;"
+      id="sniperImage"
+    />
+    <p class="mt-6 text-gray-600 text-lg">Sometimes, a little coffee is all we need.</p>
+  </div>
+
+<!-- Rose Glass Animation Container -->
+<div id="roseAnimationDiv" class="hidden flex flex-col items-center justify-center h-full text-center relative" style="background: #122139;">
+  <h2 class="text-1xl text-pink-100 mb-6">
+    Rose for you. I hope you liked my short program! HAHAHA
+  </h2>
+
+  <!-- This acts as the container like the image -->
+  <div
+    id="roseAnimation"
+    class="hidden flex items-center justify-center w-full h-[400px] rounded-xl shadow-lg"
+    style=""
+  >
+    <div class="relative" style="margin-left: -23px;">
+      <div class="container">
+        <div class="glass"></div>
+        <div class="thorns">
+          <div></div><div></div><div></div><div></div>
+        </div>
+        <div class="glow"></div>
+        <div class="rose-leaves">
+          <div></div><div></div>
+        </div>
+        <div class="rose-petals">
+          <div></div><div></div><div></div><div></div>
+          <div></div><div></div><div></div>
+        </div>
+        <div class="sparkles">
+          <div></div><div></div><div></div><div></div><div></div>
+          <div></div><div></div><div></div><div></div><div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+
+
+
+  <script>
+    function sniper() {
+          const sniperImage = document.getElementById('sniperImage');
+          const sniperSection = document.getElementById('sniperSection');
+          const roseAnimation = document.getElementById('roseAnimation');
+          const roseAnimationDiv = document.getElementById('roseAnimationDiv');
+
+          setTimeout(() => {
+            sniperImage.classList.add('opacity-0'); // fade out
+            setTimeout(() => {
+              sniperSection.classList.add('hidden');
+              roseAnimation.classList.remove('hidden');
+              roseAnimationDiv.classList.remove('hidden');
+            }, 1000); // wait for fade transition to finish
+          }, 10000); // 10 seconds
+        }
+    // navigation
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.onclick = () => showPage(btn.dataset.page);
+    });
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+
+      if (id == 'page5'){
+        sniper()
+      }
+    }
+
+    document.getElementById('readyBtn').addEventListener('click', () => {
+      showPage('page2');
+    });
+
+    // Intersection Points logic
+    const canvas = document.querySelector('#particlesCanvas canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function initCanvas(){
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      particles = [];
+      for(let i=0;i<5;i++) addParticle();
+      animate();
+    }
+
+    function addParticle(){
+      const colors=['#EC4899','#7C3AED','#3B82F6','#10B981','#F59E0B'];
+      const col=colors[Math.floor(Math.random()*colors.length)];
+      particles.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        size: Math.random()*15+5, color:col,
+        vx:Math.random()*2-1, vy:Math.random()*2-1
+      });
+    }
+
+    function resetParticles(){
+      particles=[]; for(let i=0;i<5;i++) addParticle();
+    }
+
+    function animate(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const gravity = document.getElementById('gravitySlider').value/50;
+      const cx = canvas.width/2, cy = canvas.height/2;
+      particles.forEach(p => {
+        const dx = cx - p.x, dy = cy - p.y;
+        const dist = Math.hypot(dx,dy);
+        if(dist>0){ p.vx += dx/dist*gravity*0.2; p.vy += dy/dist*gravity*0.2; }
+        p.vx += (Math.random()-0.5)*0.2; p.vy += (Math.random()-0.5)*0.2;
+        p.x += p.vx; p.y += p.vy;
+        if(p.x<0||p.x>canvas.width) p.vx*=-0.8;
+        if(p.y<0||p.y>canvas.height) p.vy*=-0.8;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
+      });
+      for(let i=0;i<particles.length;i++){
+        for(let j=i+1;j<particles.length;j++){
+          const p1=particles[i], p2=particles[j];
+          const dx=p1.x-p2.x, dy=p1.y-p2.y;
+          const dist = Math.hypot(dx,dy);
+          if(dist<150){
+            const o = 1 - dist/150;
+            ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+            ctx.strokeStyle = `rgba(99,102,241,${o*0.7})`; ctx.lineWidth=1; ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    document.getElementById('addParticleBtn').addEventListener('click', addParticle);
+    document.getElementById('resetParticlesBtn').addEventListener('click', resetParticles);
+    document.getElementById('revealBtn1').addEventListener('click', () => {
+      document.getElementById('hidden1').style.maxHeight = '200px';
+      for(let i=0;i<10;i++){
+        setTimeout(() => {
+          addParticle();
+          let p = particles[particles.length-1];
+          p.vx = (Math.random()-0.5)*5;
+          p.vy = (Math.random()-0.5)*5;
+        }, i*100);
+      }
+    });
+
+    // Quiz logic
+    document.addEventListener('DOMContentLoaded', () => {
+      const questions=[
+        { question: "When your partner is upset, you prefer to:", options:["Give them space to process","Hug and comfort them","Offer practical solutions","Do something fun to distract them"], languages:["Space","Touch","Service","Fun"] },
+        { question: "Your ideal date would be:", options:["A quiet dinner with deep conversation","Cuddling on the couch watching movies","Working on a project together","An exciting adventure or new experience"], languages:["Time","Touch","Service","Excitement"] },
+        { question: "You feel most loved when your partner:", options:["Spends quality one-on-one time with you","Holds your hand or gives physical affection","Does helpful things without being asked","Surprises you with gifts or experiences"], languages:["Time","Touch","Service","Gifts"] },
+        { question:"You show love by:", options:["Writing heartfelt notes or messages","Frequent hugs, kisses, or touches","Doing chores or tasks they dislike","Planning special surprises"], languages:["Words","Touch","Service","Surprises"] }
+      ];
+      const opts = document.querySelectorAll('.quiz-option');
+      let current=0, answers=[];
+      const qt = document.getElementById('questionText');
+      const prog = document.querySelector('#quizProgress div');
+      const resCont = document.getElementById('resultContainer');
+      const quizCont = document.getElementById('questionContainer');
+      const resTxt = document.getElementById('resultText');
+      const resDesc = document.getElementById('resultDescription');
+      const viz = document.getElementById('loveLanguageVisual');
+      const retake = document.getElementById('retakeQuiz');
+
+      function loadQ(idx){
+        qt.textContent = questions[idx].question;
+        opts.forEach((b,i)=> b.textContent = questions[idx].options[i]);
+      }
+      function showResults(){
+        quizCont.classList.add('hidden');
+        resCont.classList.remove('hidden');
+        const counts = {};
+        answers.forEach(a => counts[a] = (counts[a]||0)+1);
+        const primary = Object.keys(counts).reduce((a,b)=>counts[a]>counts[b]?a:b);
+        resTxt.textContent = primary;
+        const descs = {
+          "Time": "Quality time is your priority - undivided attention makes you feel truly loved and valued.",
+          "Touch": "Physical touch speaks volumes to you - hugs, holding hands, and closeness express love powerfully.",
+          "Service": "Acts of service matter most - when your partner helps or does things for you, you feel cared for.",
+          "Words": "Words of affirmation resonate deeply - verbal appreciation and compliments mean the world to you.",
+          "Gifts": "Thoughtful gifts touch your heart - it's not about cost but the meaning behind them.",
+          "Space": "Having personal space when upset helps you recharge and feel supported.",
+          "Fun": "Shared fun and new experiences make your bond stronger and more joyful.",
+          "Excitement": "Exciting adventures keep your relationship vibrant and full of energy.",
+          "Surprises": "Unexpected surprises show your partner’s love and thoughtfulness."
+        };
+        resDesc.textContent = descs[primary] || "Your love language is unique and special!";
+        
+        // Simple visual: colored hearts or icons by love language
+        viz.innerHTML = "";
+        const colors = {
+          "Time": "#6366F1",
+          "Touch": "#EC4899",
+          "Service": "#10B981",
+          "Words": "#F59E0B",
+          "Gifts": "#8B5CF6",
+          "Space": "#6B7280",
+          "Fun": "#F97316",
+          "Excitement": "#EF4444",
+          "Surprises": "#D946EF"
+        };
+        const color = colors[primary] || "#A78BFA";
+        for(let i=0; i<5; i++){
+          const heart = document.createElement("span");
+          heart.textContent = "❤️";
+          heart.style.fontSize = "2rem";
+          heart.style.margin = "0 4px";
+          heart.style.color = color;
+          viz.appendChild(heart);
+        }
+      }
+
+      function resetQuiz(){
+        answers = [];
+        current = 0;
+        prog.style.width = "0%";
+        quizCont.classList.remove('hidden');
+        resCont.classList.add('hidden');
+        loadQ(current);
+      }
+
+      opts.forEach((btn,i) => {
+        btn.addEventListener('click', () => {
+          answers.push(questions[current].languages[i]);
+          current++;
+          prog.style.width = `${(current / questions.length) * 100}%`;
+          if(current < questions.length){
+            loadQ(current);
+          } else {
+            showResults();
+          }
+        });
+      });
+
+      retake.addEventListener('click', resetQuiz);
+
+      // initialize quiz
+      loadQ(current);
+    });
+
+    // Initialize canvas when page 3 is active
+    window.addEventListener('load', () => {
+      initCanvas();
+    });
+    // Re-init canvas on resize
+    window.addEventListener('resize', () => {
+      if(document.getElementById('page3').classList.contains('active')){
+        initCanvas();
+      }
+    });
+  </script>
+
+    <script>
+        
+  let noClickCount = 0;
+  const page2Gif = document.getElementById('page2Gif');
+  const questionContainer2 = document.getElementById('questionContainer2');
+  const reactionGif = document.getElementById('reactionGif');
+  const noBtn = document.getElementById('noBtn');
+  const maybeBtn = document.getElementById('maybeBtn');
+  const yesBtn = document.getElementById('yesBtn');
+
+  function fadeOutGifAndShowQuestion() {
+    page2Gif.style.opacity = 0;
+    setTimeout(() => {
+      page2Gif.style.display = 'none';
+      questionContainer2.classList.remove('hidden');
+    }, 3000);
+  }
+
+  // Trigger the transition once page2 is active
+  const observer = new MutationObserver(() => {
+    if (document.getElementById('page2').classList.contains('active')) {
+      fadeOutGifAndShowQuestion();
+    }
+  });
+
+  observer.observe(document.getElementById('page2'), { attributes: true, attributeFilter: ['class'] });
+
+  noBtn.addEventListener('click', () => {
+  noClickCount++;
+
+  // Clear any previous hiding logic
+  reactionGif.classList.add('hidden');
+
+  if (noClickCount === 1) {
+    reactionGif.src = "https://media1.tenor.com/images/39937c878d5b0fd226abd73a985a3808/tenor.gif?itemid=15442266";
+    reactionGif.classList.remove('hidden');
+    setTimeout(() => reactionGif.classList.add('hidden'), 2000);
+  } else if (noClickCount === 2) {
+    reactionGif.src = "https://media1.tenor.com/m/qJpqut6SNE4AAAAC/that-hurt-office-crying-meme.gif";
+    reactionGif.classList.remove('hidden');
+    setTimeout(() => reactionGif.classList.add('hidden'), 2000);
+  } else if (noClickCount >= 3) {
+    // Hides any previous gif if still lingering
+    reactionGif.classList.add('hidden');
+
+    // Move the button to a random location
+    noBtn.style.position = 'absolute';
+    noBtn.style.transition = 'top 0.3s ease, left 0.3s ease';
+    noBtn.style.top = `${Math.random() * 80 + 10}%`;
+    noBtn.style.left = `${Math.random() * 80 + 10}%`;
+  }
+});
+
+
+  // Maybe Button
+  maybeBtn.addEventListener('click', () => {
+    reactionGif.src = "https://media3.giphy.com/media/l0HlFZ3c4NENSLQRi/giphy.gif";
+    reactionGif.classList.remove('hidden');
+    setTimeout(() => {reactionGif.classList.add('hidden'); document.getElementById('text_maychance').innerText = 'Maybe is a sign of yes right?'; noBtn.style.display = 'none'; maybeBtn.style.display = 'none'}, 2500);
+  });
+
+  // Yes Button
+  yesBtn.addEventListener('click', () => {
+    reactionGif.src = "https://media.tenor.com/UVmpVqlpVhQAAAAM/yess-yes.gif";
+    reactionGif.classList.remove('hidden');
+    setTimeout(() => {
+      reactionGif.classList.add('hidden');
+      showPage('page3');
+    }, 2500);
+  });
+</script>
+</body>
+</html>
